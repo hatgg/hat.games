@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Nose</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; touch-action: none; }
+      canvas { display: block; }
+      #hud {
+        position: fixed; left: 0; right: 0; top: 0; padding: 14px 18px;
+        color: rgba(255,255,255,0.55); font: 14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif;
+        pointer-events: none; display: flex; justify-content: space-between; letter-spacing: 0.02em;
+      }
+      #hud b { color: rgba(255,255,255,0.85); font-weight: 600; }
+      #msg {
+        position: fixed; left: 0; right: 0; bottom: 10%; text-align: center; pointer-events: none;
+        color: #fff; font: 600 28px/1.2 system-ui, -apple-system, Segoe UI, sans-serif;
+        text-shadow: 0 2px 18px rgba(0,0,0,0.9); opacity: 0; transition: opacity 0.4s;
+      }
+      #msg small { display: block; font-size: 15px; font-weight: 400; color: rgba(255,255,255,0.7); margin-top: 8px; }
+      #sniff {
+        position: fixed; right: 18px; bottom: 18px; width: 86px; height: 86px; border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8);
+        font: 600 14px system-ui, sans-serif; display: none; align-items: center; justify-content: center;
+        user-select: none; -webkit-user-select: none; touch-action: none;
+      }
+      #sniff.on { background: rgba(255,255,255,0.3); }
+      @media (pointer: coarse) { #sniff { display: flex; } }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="hud">
+      <div><b id="found">0</b> / <span id="total">0</span> found &nbsp;·&nbsp; level <b id="level">1</b></div>
+      <div id="help">WASD / drag to move &nbsp;·&nbsp; hold Space to sniff</div>
+    </div>
+    <div id="msg"></div>
+    <div id="sniff">sniff</div>
+    <script src="game.js"></script>
+  </body>
+</html>
