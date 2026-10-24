@@ -19,6 +19,14 @@
         text-shadow: 0 2px 18px rgba(0,0,0,0.9); opacity: 0; transition: opacity 0.4s;
       }
       #msg small { display: block; font-size: 15px; font-weight: 400; color: rgba(255,255,255,0.7); margin-top: 8px; }
+      #exp {
+        position: fixed; left: 18px; bottom: 18px; width: 220px; pointer-events: none;
+        color: rgba(255,255,255,0.55); font: 13px/1.3 system-ui, -apple-system, Segoe UI, sans-serif;
+      }
+      #exp .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+      #exp b { color: rgba(255,255,255,0.9); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 12px; }
+      #expbar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
+      #expfill { height: 100%; width: 0; background: linear-gradient(90deg, #ffd46a, #ff9c3c); border-radius: 3px; transition: width 0.6s cubic-bezier(.2,.8,.2,1); }
       #sniff {
         position: fixed; right: 18px; bottom: 18px; width: 86px; height: 86px; border-radius: 50%;
         border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8);
@@ -36,6 +44,10 @@
       <div id="help">WASD / drag to move &nbsp;·&nbsp; hold Space to sniff</div>
     </div>
     <div id="msg"></div>
+    <div id="exp">
+      <div class="row"><b id="rank">Pup</b><span id="exptext">0 / 400 exp</span></div>
+      <div id="expbar"><div id="expfill"></div></div>
+    </div>
     <div id="sniff">sniff</div>
     <script src="game.js"></script>
   </body>

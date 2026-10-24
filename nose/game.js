@@ -12,6 +12,9 @@
   const hudTotal = document.getElementById('total');
   const hudLevel = document.getElementById('level');
   const msgEl = document.getElementById('msg');
+  const hudRank = document.getElementById('rank');
+  const hudExpFill = document.getElementById('expfill');
+  const hudExpText = document.getElementById('exptext');
   const sniffBtn = document.getElementById('sniff');
 
   let W = 0, H = 0, DPR = 1;
@@ -107,6 +110,49 @@
   let time = 0;
   let sniff = 0;        // 0..1, eased
   let flash = 0;        // white flash when you find something
+  let lastFindAt = -1;  // for the quick-follow-up bonus
+  let popups = [];      // floating "+EXP" text
+
+  // ---------- exp ----------
+  // Finding a source earns EXP. Faint trails and quick follow-ups pay more.
+  // Total EXP maps to a rank; each rank widens the lens a touch.
+  const RANKS = ['Pup', 'Sniffer', 'Tracker', 'Hound', 'Bloodhound', 'Legend'];
+  const SAVE_KEY = 'nose.exp';
+  const prog = { exp: 0 };
+  try { const sv = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); if (Number.isFinite(sv.exp)) prog.exp = sv.exp; } catch (e) { /* no storage, fine */ }
+  function expForRank(r) { return 400 * r * (r + 1) / 2; }     // 400, 1200, 2400, 4000, 6000
+  function rankOf(exp) {
+    let r = 0;
+    while (r + 1 < RANKS.length && exp >= expForRank(r + 1)) r++;
+    return r;
+  }
+  function rankBonus() { return 1 + rankOf(prog.exp) * 0.03; }
+  function updateExpHud() {
+    const r = rankOf(prog.exp);
+    const maxed = r >= RANKS.length - 1;
+    const lo = expForRank(r), hi = expForRank(r + 1);
+    hudRank.textContent = RANKS[r];
+    hudExpFill.style.width = (maxed ? 100 : ((prog.exp - lo) / (hi - lo)) * 100) + '%';
+    hudExpText.textContent = maxed ? `${prog.exp} exp` : `${prog.exp} / ${hi} exp`;
+  }
+  function awardExp(pl, cfg) {
+    const base = 80 + 40 * level;
+    const faint = Math.round(120 * (1 - cfg.trunkEndStrength));           // harder trail, more exp
+    const quick = lastFindAt >= 0 && time - lastFindAt < 45 ? 50 : 0;    // kept the thread going
+    const gain = base + faint + quick;
+    const before = rankOf(prog.exp);
+    prog.exp += gain;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(prog)); } catch (e) { /* ignore */ }
+    updateExpHud();
+    lastFindAt = time;
+    popups.push({ text: `+${gain} exp`, sub: quick ? 'quick nose' : (faint > 80 ? 'faint trail' : ''), hue: pl.thing.hue, life: 0, max: 2.2 });
+    const after = rankOf(prog.exp);
+    if (after > before) {
+      popups.push({ text: `Rank up: ${RANKS[after]}`, sub: 'your lens widens', hue: 50, life: -1.2, max: 3 });
+      flash = Math.max(flash, 1.2);
+    }
+    return gain;
+  }
   const MAX_PARTICLES = 2600;
 
   // A plume is a tree of nodes rooted at its source. Each node carries a
@@ -308,6 +354,7 @@
       if (Math.hypot(pl.source.x - player.x, pl.source.y - player.y) < 42) {
         pl.found = true; found++; flash = 1;
         hudFound.textContent = found;
+        awardExp(pl, levelConfig(level));
         const left = plumes.filter(p => !p.found).length;
         showMsg(`${pl.thing.glyph} Found the ${pl.thing.name}!`,
                 left ? `${left} more smell${left > 1 ? 's' : ''} out there.` : 'That is all of them.', 2200);
@@ -316,11 +363,15 @@
     }
     if (levelDoneAt && time > levelDoneAt) { level++; buildLevel(level); }
     flash = Math.max(0, flash - dt * 1.6);
+    for (let i = popups.length - 1; i >= 0; i--) {
+      popups[i].life += dt;
+      if (popups[i].life >= popups[i].max) popups.splice(i, 1);
+    }
   }
 
   function lensRadius() {
     const breath = 1 + Math.sin(time * 1.1) * 0.025;   // the lens breathes
-    return Math.min(W, H) * 0.42 * (1 - 0.38 * sniff) * breath;
+    return Math.min(W, H) * 0.42 * rankBonus() * (1 - 0.38 * sniff) * breath;
   }
 
   // ---------- render ----------
@@ -426,6 +477,27 @@
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.beginPath(); ctx.arc(cx, cy, 3, 0, TAU); ctx.fill();
 
+    // floating exp text
+    for (const pu of popups) {
+      if (pu.life < 0) continue;
+      const t = pu.life / pu.max;
+      const a = t < 0.15 ? t / 0.15 : 1 - Math.max(0, (t - 0.6) / 0.4);
+      const y = cy - 40 - t * 70;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 12;
+      ctx.fillStyle = `hsl(${pu.hue}, 90%, 75%)`;
+      ctx.font = '600 26px system-ui, -apple-system, "Segoe UI", sans-serif';
+      ctx.fillText(pu.text, cx, y);
+      if (pu.sub) {
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.font = '400 14px system-ui, -apple-system, "Segoe UI", sans-serif';
+        ctx.fillText(pu.sub, cx, y + 24);
+      }
+      ctx.restore();
+    }
+
     if (flash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${flash * 0.5})`;
       ctx.fillRect(0, 0, W, H);
@@ -442,8 +514,9 @@
     requestAnimationFrame(frame);
   }
   buildLevel(level);
+  updateExpHud();
   requestAnimationFrame(frame);
 
   // small debug handle for poking at a running game from the console
-  window.__nose = { player, get plumes() { return plumes; }, get level() { return level; }, get found() { return found; } };
+  window.__nose = { player, get plumes() { return plumes; }, get level() { return level; }, get found() { return found; }, prog, rankOf };
 })();
